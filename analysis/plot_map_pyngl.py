@@ -18,8 +18,8 @@ def plot_map(wks, x, y, data, **kwargs):
     res.cnFillPalette = 'MPL_viridis'
 
     # Add cyclic point if we need to
-    if len(data.shape) == 2 and x.max() < 360:
-        data, x = ngl.add_cyclic(data, x)
+    #if len(data.shape) == 2 and x.max() < 360:
+    #    data, x = ngl.add_cyclic(data, x)
 
     # If passed 2d coordinate arrays assume they represent cell vertices, 
     # otherwise assume cell centers

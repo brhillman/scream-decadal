@@ -2,6 +2,7 @@
 import plac, numpy
 from matplotlib import pyplot
 from matplotlib.tri import Triangulation
+from mpl_toolkits.axes_grid1 import make_axes_locatable
 from cartopy import crs
 from cartopy.util import add_cyclic_point
 import xarray
@@ -11,8 +12,9 @@ from e3smplot.e3sm_utils import get_data, get_area_weights, area_average
 
 
 def fix_longitudes(lon):
-    lon.values = (lon + 180) % 360 - 180
-    return lon #lon.assign_coords(lon=((lon + 180) % 360) - 180) #numpy.where(lon > 180, lon - 360, lon))
+    #lon.assign_coords({'lon': (lon + 180) % 360 - 180})
+    return ((lon + 180) % 360) - 180
+    #return lon #lon.assign_coords(lon=((lon + 180) % 360) - 180) #numpy.where(lon > 180, lon - 360, lon))
 
 
 def plot_map(lon, lat, data, axes=None, plot_method='triangulation', nlon=360, nlat=180, title=None, **kwargs):
@@ -28,7 +30,7 @@ def plot_map(lon, lat, data, axes=None, plot_method='triangulation', nlon=360, n
     lon = fix_longitudes(lon)
 
     # Plot data
-    if 'ncol' in data.dims:
+    if len(data.shape) == 1:
         if plot_method == 'triangulation':
             # Calculate triangulation
             triangulation = Triangulation(lon.values, lat.values)
@@ -45,11 +47,14 @@ def plot_map(lon, lat, data, axes=None, plot_method='triangulation', nlon=360, n
             pl = axes.pcolormesh(xi, yi, data_regridded, transform=crs.PlateCarree(), **kwargs)
         else:
             raise ValueError('method %s not known'%method)
-    elif ('lon' in data.dims) and ('lat' in data.dims):
+    #elif ('lon' in data.dims) and ('lat' in data.dims):
+    elif len(data.shape) == 2:
         # Need to add a cyclic point
         #_data, _lon = add_cyclic_point(data.transpose('lat', 'lon').values, coord=lon.values)
+        # Figure out dim indices for lon, lat to transpose
+        transpose_dims = data.dims[data.shape.index(len(lat))], data.dims[data.shape.index(len(lon))]
         pl = axes.pcolormesh(
-            lon, lat, data.transpose('lat', 'lon'),
+            lon, lat, data.transpose(*transpose_dims), 
             transform=crs.PlateCarree(), **kwargs
         )
     else:
@@ -65,10 +70,14 @@ def plot_map(lon, lat, data, axes=None, plot_method='triangulation', nlon=360, n
         axes.set_title(title)
 
     # Add a colorbar
+    #pos = axes.get_position()
+    #cax = pyplot.gcf().add_axes([pos.x0, pos.y0 - (0.075 * pos.height), pos.width, 0.05 * pos.height])
+    divider = make_axes_locatable(axes)
+    cax = divider.append_axes("bottom", size="5%", pad=0.1, axes_class=pyplot.Axes)
     cb = pyplot.colorbar(
-        pl, ax=axes, orientation='horizontal',
+        pl, cax=cax, orientation='horizontal',
         label='%s (%s)'%(data.long_name, data.units),
-        pad=0.02
+        #pad=0.02
         #shrink=0.8, pad=0.02
     )
 
